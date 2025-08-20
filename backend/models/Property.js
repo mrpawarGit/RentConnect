@@ -11,7 +11,7 @@ const PropertySchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    tenants: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Array of tenant IDs
+    tenants: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Array of tenants
   },
   { timestamps: true }
 );

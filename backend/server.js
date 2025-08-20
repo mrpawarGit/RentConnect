@@ -15,6 +15,7 @@ app.use(express.json());
 
 // Auth routes
 app.use("/api/auth", require("./routes/auth"));
+app.use("/api/properties", require("./routes/property"));
 
 // Protected test route
 app.get(
