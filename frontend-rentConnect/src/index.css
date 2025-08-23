@@ -1,0 +1,50 @@
+@import "tailwindcss";
+/* @tailwind base;
+@tailwind components; */
+@tailwind utilities;
+
+/* Define CSS variables for light and dark themes */
+:root {
+  --color-bg: #ffffff; /* white background */
+  --color-text: #000000; /* black text */
+  --color-primary: #000000; /* black primary */
+  --color-primary-hover: #444444; /* dark gray hover on primary buttons */
+}
+
+.dark {
+  --color-bg: #000000; /* black background */
+  --color-text: #ffffff; /* white text */
+  --color-primary: #ffffff; /* white primary */
+  --color-primary-hover: #dddddd; /* light gray hover */
+}
+
+/* Use Tailwind utilities along with CSS variables */
+body,
+html {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.bg-custom {
+  background-color: var(--color-bg);
+}
+
+.text-custom {
+  color: var(--color-text);
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.hover-bg-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.border-primary {
+  border-color: var(--color-primary);
+}
