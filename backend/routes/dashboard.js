@@ -1,25 +1,23 @@
 const express = require("express");
 const router = express.Router();
-
 const { authenticate, requireRole } = require("../middleware/authMiddleware");
 const {
-  createProperty,
-  getPropertiesForLandlord,
   getLandlordDashboard,
+  getTenantDashboard,
 } = require("../controllers/propertyController");
 
-router.post("/", authenticate, requireRole(["landlord"]), createProperty);
-router.get(
-  "/",
-  authenticate,
-  requireRole(["landlord"]),
-  getPropertiesForLandlord
-);
+// Frontend expects these:
 router.get(
   "/landlord/dashboard",
   authenticate,
   requireRole(["landlord"]),
   getLandlordDashboard
+);
+router.get(
+  "/tenant/dashboard",
+  authenticate,
+  requireRole(["tenant"]),
+  getTenantDashboard
 );
 
 module.exports = router;

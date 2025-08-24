@@ -1,9 +1,6 @@
 @import "tailwindcss";
-/* @tailwind base;
-@tailwind components; */
 @tailwind utilities;
 
-/* Define CSS variables for light and dark themes */
 :root {
   --color-bg: #ffffff; /* white background */
   --color-text: #000000; /* black text */

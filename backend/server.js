@@ -1,23 +1,47 @@
+// backend/server.js
 require("dotenv").config();
 const express = require("express");
-const connectDB = require("./config/db");
 const cors = require("cors");
+const path = require("path");
 
+const connectDB = require("./config/db");
 const { authenticate, requireRole } = require("./middleware/authMiddleware");
 
 const app = express();
 
-// Connect to MongoDB
+/* ------------------------- DB CONNECTION ------------------------- */
 connectDB();
 
-app.use(cors());
+/* --------------------------- MIDDLEWARE -------------------------- */
+// Allow your frontend dev server to connect (Vite default: 5173)
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+app.use(
+  cors({
+    origin: CLIENT_URL,
+    credentials: true,
+  })
+);
+
+// Parse JSON bodies
 app.use(express.json());
 
+// Serve uploaded files (maintenance request images/videos)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+/* ----------------------------- ROUTES ---------------------------- */
 // Auth routes
 app.use("/api/auth", require("./routes/auth"));
+
+// Property routes (landlord only)
 app.use("/api/properties", require("./routes/property"));
 
-// Protected test route
+// Dashboard routes (tenant + landlord)
+app.use("/api", require("./routes/dashboard"));
+
+// Maintenance routes
+app.use("/api/maintenance", require("./routes/maintenance"));
+
+/* ----------------------- PROTECTED TEST ROUTE -------------------- */
 app.get(
   "/api/protected",
   authenticate,
@@ -27,6 +51,9 @@ app.get(
   }
 );
 
-// Start server
+/* ----------------------------- SERVER ---------------------------- */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🌍 CORS Origin allowed: ${CLIENT_URL}`);
+});

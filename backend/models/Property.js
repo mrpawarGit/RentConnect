@@ -1,3 +1,5 @@
+// models/Property.js
+
 const mongoose = require("mongoose");
 
 const PropertySchema = new mongoose.Schema(
@@ -6,14 +8,22 @@ const PropertySchema = new mongoose.Schema(
     address: { type: String, required: true },
     description: { type: String },
     rentAmount: { type: Number, required: true },
+
     landlord: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    tenants: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Array of tenants
+    tenants: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
 module.exports = mongoose.model("Property", PropertySchema);

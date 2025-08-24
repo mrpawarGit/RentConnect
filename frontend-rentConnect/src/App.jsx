@@ -4,8 +4,10 @@ import Footer from "./components/Footer";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import TenantDashboard from "./pages/TenantDashboard";
-import LandlordDashboard from "./pages/LandlordDashboard";
+import DashboardRouter from "./pages/DashboardRouter";
+import PrivateRoute from "./components/PrivateRoute";
+import SubmitRequest from "./pages/SubmitRequest";
+import MyRequests from "./pages/MyRequests";
 
 export default function App() {
   return (
@@ -17,8 +19,34 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/tenant-dashboard" element={<TenantDashboard />} />
-            <Route path="/landlord-dashboard" element={<LandlordDashboard />} />
+
+            {/*  */}
+            <Route
+              path="/requests/new"
+              element={
+                <PrivateRoute>
+                  <SubmitRequest />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/requests/mine"
+              element={
+                <PrivateRoute>
+                  <MyRequests />
+                </PrivateRoute>
+              }
+            />
+
+            {/* Protected dashboard route */}
+            <Route
+              path="/dashboard/*"
+              element={
+                <PrivateRoute>
+                  <DashboardRouter />
+                </PrivateRoute>
+              }
+            />
           </Routes>
         </main>
         <Footer />
