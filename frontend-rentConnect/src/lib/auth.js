@@ -22,6 +22,16 @@ export function isAuthenticated() {
 
 export function logout() {
   localStorage.removeItem("token");
+  try {
+    window.dispatchEvent(new Event("rentconnect-auth"));
+  } catch (e) {}
+}
+
+export function setToken(token) {
+  localStorage.setItem("token", token);
+  try {
+    window.dispatchEvent(new Event("rentconnect-auth"));
+  } catch (e) {}
 }
 
 export function getToken() {

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { setToken } from "../lib/auth";
 
 export default function Login() {
   const [errorMsg, setErrorMsg] = useState("");
@@ -22,7 +23,7 @@ export default function Login() {
         data
       );
 
-      localStorage.setItem("token", res.data.token);
+      setToken(res.data.token);
 
       const base64Url = res.data.token.split(".")[1];
       const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
@@ -37,33 +38,32 @@ export default function Login() {
       navigate("/dashboard");
     } catch (err) {
       setErrorMsg(
-        err.response?.data?.message || "Login failed. Please try again."
+        err.response?.data?.message ||
+          "Login failed. Please check your credentials."
       );
     }
   }
 
   return (
-    <section className="max-w-md mx-auto p-6 border rounded-lg shadow bg-background-light dark:bg-background-dark text-primary-light dark:text-primary-dark">
-      <h2 className="text-2xl font-semibold mb-6">Login</h2>
-      <form onSubmit={handleSubmit}>
-        <label className="block mb-4">
-          Email
+    <section className="max-w-md mx-auto p-6">
+      <h1 className="text-2xl font-semibold mb-4">Login</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block">
+          <span className="block mb-1">Email</span>
           <input
             name="email"
             type="email"
-            placeholder="Enter your email"
-            className="w-full p-2 border rounded mt-1 bg-background-light dark:bg-background-dark border-primary-light dark:border-primary-dark text-primary-light dark:text-primary-dark"
             required
+            className="w-full border rounded px-3 py-2"
           />
         </label>
-        <label className="block mb-4">
-          Password
+        <label className="block">
+          <span className="block mb-1">Password</span>
           <input
             name="password"
             type="password"
-            placeholder="Enter your password"
-            className="w-full p-2 border rounded mt-1 bg-background-light dark:bg-background-dark border-primary-light dark:border-primary-dark text-primary-light dark:text-primary-dark"
             required
+            className="w-full border rounded px-3 py-2"
           />
         </label>
         {errorMsg && (

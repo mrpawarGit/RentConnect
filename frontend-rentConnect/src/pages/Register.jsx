@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { setToken } from "../lib/auth";
 
 export default function Register() {
   const [errorMsg, setErrorMsg] = useState("");
@@ -24,7 +25,7 @@ export default function Register() {
         data
       );
 
-      localStorage.setItem("token", res.data.token);
+      setToken(res.data.token);
 
       navigate("/dashboard");
     } catch (err) {
@@ -33,47 +34,39 @@ export default function Register() {
   }
 
   return (
-    <section className="max-w-md mx-auto p-6 border rounded-lg shadow bg-background-light dark:bg-background-dark text-primary-light dark:text-primary-dark">
-      <h2 className="text-2xl font-semibold mb-6">Register</h2>
-      <form onSubmit={handleSubmit}>
-        <label className="block mb-4">
-          Full Name
+    <section className="max-w-md mx-auto p-6">
+      <h1 className="text-2xl font-semibold mb-4">Register</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block">
+          <span className="block mb-1">Name</span>
           <input
             name="name"
             type="text"
-            placeholder="Enter your full name"
-            className="w-full p-2 border rounded mt-1 bg-background-light dark:bg-background-dark border-primary-light dark:border-primary-dark text-primary-light dark:text-primary-dark"
             required
+            className="w-full border rounded px-3 py-2"
           />
         </label>
-        <label className="block mb-4">
-          Email
+        <label className="block">
+          <span className="block mb-1">Email</span>
           <input
             name="email"
             type="email"
-            placeholder="Enter your email"
-            className="w-full p-2 border rounded mt-1 bg-background-light dark:bg-background-dark border-primary-light dark:border-primary-dark text-primary-light dark:text-primary-dark"
             required
+            className="w-full border rounded px-3 py-2"
           />
         </label>
-        <label className="block mb-4">
-          Password
+        <label className="block">
+          <span className="block mb-1">Password</span>
           <input
             name="password"
             type="password"
-            placeholder="Create a password"
-            className="w-full p-2 border rounded mt-1 bg-background-light dark:bg-background-dark border-primary-light dark:border-primary-dark text-primary-light dark:text-primary-dark"
             required
+            className="w-full border rounded px-3 py-2"
           />
         </label>
-        <label className="block mb-4">
-          Role
-          <select
-            name="role"
-            required
-            className="w-full p-2 border rounded mt-1 bg-background-light dark:bg-background-dark border-primary-light dark:border-primary-dark text-primary-light dark:text-primary-dark"
-          >
-            <option value="">-- Select Role --</option>
+        <label className="block">
+          <span className="block mb-1">Role</span>
+          <select name="role" className="w-full border rounded px-3 py-2">
             <option value="tenant">Tenant</option>
             <option value="landlord">Landlord</option>
           </select>

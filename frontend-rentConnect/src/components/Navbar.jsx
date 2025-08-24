@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
-import { getCurrentUser } from "../lib/auth";
+import { getCurrentUser, logout } from "../lib/auth";
 import { disconnectSocket } from "../lib/socket"; // safe even if socket not connected
 
 export default function Navbar() {
@@ -10,13 +10,18 @@ export default function Navbar() {
   const [user, setUser] = useState(getCurrentUser());
   const [open, setOpen] = useState(false);
 
-  // reflect auth changes from other tabs/windows
+  // reflect auth changes from other tabs/windows and same-tab updates
   useEffect(() => {
+    const refresh = () => setUser(getCurrentUser());
     const onStorage = (e) => {
-      if (e.key === "token") setUser(getCurrentUser());
+      if (e.key === "token") refresh();
     };
+    window.addEventListener("rentconnect-auth", refresh);
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("rentconnect-auth", refresh);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   // close mobile menu on route change (naive: close whenever user changes)
@@ -25,7 +30,7 @@ export default function Navbar() {
   }, [user]);
 
   function handleLogout() {
-    localStorage.removeItem("token");
+    logout();
     disconnectSocket();
     setUser(null);
     navigate("/login");
