@@ -1,3 +1,4 @@
+// backend/models/Message.js
 const mongoose = require("mongoose");
 
 const MessageSchema = new mongoose.Schema(
@@ -7,16 +8,18 @@ const MessageSchema = new mongoose.Schema(
       ref: "Thread",
       required: true,
     },
-    sender: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    body: { type: String, default: "" },
+    from: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    to: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+
+    body: { type: String, trim: true },
     attachments: [{ type: String }],
-    readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
+    // message receipts
+    deliveredAt: { type: Date, default: null },
+    readAt: { type: Date, default: null },
   },
-  { timestamps: true }
+  { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-module.exports = mongoose.model("Message", MessageSchema);
+module.exports =
+  mongoose.models.Message || mongoose.model("Message", MessageSchema);

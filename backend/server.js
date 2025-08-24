@@ -9,183 +9,165 @@ const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
 
 const connectDB = require("./config/db");
-const { authenticate, requireRole } = require("./middleware/authMiddleware");
-
-// Chat models for Socket.IO handlers
 const Thread = require("./models/Thread");
 const Message = require("./models/Message");
 
 const app = express();
+app.use(cors({ origin: process.env.CLIENT_URL || true, credentials: true }));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true }));
 
-/* ------------------------- DB CONNECTION ------------------------- */
-connectDB();
-
-/* --------------------------- MIDDLEWARE -------------------------- */
-// Allow your frontend dev server origin (defaults to Vite on 4000 based on your setup)
-const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:4000";
-app.use(
-  cors({
-    origin: CLIENT_URL,
-    credentials: true,
-  })
-);
-
-// Parse JSON bodies
-app.use(express.json());
-
-// Serve uploaded files (images/videos for maintenance requests)
+// serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-/* ----------------------------- ROUTES ---------------------------- */
-// Auth
+connectDB();
+
+/* ---------- ROUTES (keep your existing mounts) ---------- */
 app.use("/api/auth", require("./routes/auth"));
-
-// Properties (landlord-only operations)
-app.use("/api/properties", require("./routes/property"));
-
-// Dashboards (exposes /api/landlord/dashboard and /api/tenant/dashboard)
-app.use("/api", require("./routes/dashboard"));
-
-// Maintenance (create/list/update status + file uploads)
 app.use("/api/maintenance", require("./routes/maintenance"));
-
-// Chat REST endpoints (threads, messages, mark read)
+app.use("/api/properties", require("./routes/property"));
+app.use("/api/payments", require("./routes/payments")); // plural
+app.use("/api/tenant", require("./routes/tenant"));
+app.use("/api/landlord", require("./routes/landlord"));
 app.use("/api/chat", require("./routes/chat"));
 
-// payment
-app.use("/api/payments", require("./routes/payments"));
+if (process.env.NODE_ENV === "production") {
+  const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
+  app.use(express.static(client));
+  app.get("*", (_, res) => res.sendFile(path.join(client, "index.html")));
+}
 
-/* ----------------------- PROTECTED TEST ROUTE -------------------- */
-app.get(
-  "/api/protected",
-  authenticate,
-  requireRole(["tenant", "landlord"]),
-  (req, res) => {
-    res.json({ message: `Welcome! Your user role is ${req.user.role}` });
-  }
-);
-
-/* ------------------------- SOCKET.IO SERVER ---------------------- */
+/* -------------------- SOCKET.IO -------------------- */
 const server = http.createServer(app);
-
 const io = new Server(server, {
-  cors: {
-    origin: CLIENT_URL,
-    credentials: true,
-  },
+  cors: { origin: process.env.CLIENT_URL || true, credentials: true },
+  path: "/socket.io",
 });
-
-// Track user sockets (optional for presence/future features)
-const userSockets = new Map();
 
 // JWT auth for sockets
 io.use((socket, next) => {
   try {
-    // Accept token either via handshake.auth.token or Authorization header
-    const auth = socket.handshake.auth || {};
-    const header = auth.token || socket.handshake.headers.authorization || "";
-    const token = header.startsWith("Bearer ") ? header.slice(7) : header;
-    if (!token) return next(new Error("No token"));
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.user = { id: decoded.id, role: decoded.role };
+    const auth = socket.handshake.auth?.token || "";
+    const token = auth.replace("Bearer ", "");
+    if (!token) return next(new Error("Unauthorized"));
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    socket.user = { id: String(payload.id), role: payload.role };
     next();
-  } catch {
+  } catch (e) {
     next(new Error("Unauthorized"));
   }
 });
 
+// user presence map: userId -> Set(socketIds)
+const userSockets = new Map();
+
 io.on("connection", (socket) => {
   const uid = socket.user.id;
-
-  // Track connections
   if (!userSockets.has(uid)) userSockets.set(uid, new Set());
   userSockets.get(uid).add(socket.id);
 
-  // Personal room for direct notifications
-  socket.join(`user:${uid}`);
-
-  // Join a thread room to receive live updates for that conversation
   socket.on("thread:join", (threadId) => {
     socket.join(`thread:${threadId}`);
   });
 
-  // Send a chat message
-  socket.on("message:send", async ({ threadId, body }) => {
+  socket.on("thread:opened", async ({ threadId }) => {
     try {
-      if (!threadId || !body) return;
+      socket.join(`thread:${threadId}`);
 
-      const thread = await Thread.findById(threadId);
+      const thread = await Thread.findById(threadId).lean();
       if (!thread) return;
+      const viewerRole =
+        String(uid) === String(thread.tenant) ? "tenant" : "landlord";
 
-      const isParticipant = [
-        String(thread.tenant),
-        String(thread.landlord),
-      ].includes(uid);
-      if (!isParticipant) return;
+      await Thread.clearUnread(threadId, viewerRole);
 
-      const msg = await Message.create({ thread: threadId, sender: uid, body });
+      const now = new Date();
+      await Message.updateMany(
+        { thread: threadId, to: uid, readAt: null },
+        { $set: { readAt: now } }
+      );
 
-      // Update thread summary & unread counts
-      thread.lastMessageAt = new Date();
-      thread.lastMessagePreview = body.slice(0, 120);
-
-      const isTenant = String(thread.tenant) === uid;
-      if (isTenant)
-        thread.unreadForLandlord = (thread.unreadForLandlord || 0) + 1;
-      else thread.unreadForTenant = (thread.unreadForTenant || 0) + 1;
-
-      await thread.save();
-
-      const payload = {
-        ...msg.toObject(),
-        createdAt: msg.createdAt,
-        updatedAt: msg.updatedAt,
-      };
-
-      // Emit to participants in the thread room
-      io.to(`thread:${threadId}`).emit("message:new", payload);
-
-      // Also notify the other participant via their personal room (for sidebar/toasts)
-      const otherUserId = isTenant
-        ? String(thread.landlord)
-        : String(thread.tenant);
-      io.to(`user:${otherUserId}`).emit("thread:updated", {
+      io.to(`thread:${threadId}`).emit("message:read:bulk", {
         threadId,
-        lastMessagePreview: thread.lastMessagePreview,
-        lastMessageAt: thread.lastMessageAt,
-        unreadForMe: isTenant
-          ? thread.unreadForLandlord
-          : thread.unreadForTenant,
+        readAt: now,
+        readerId: uid,
       });
-    } catch {
-      // You can add error emits if needed
+    } catch (_) {}
+  });
+
+  // SEND MESSAGE: emit to thread room AND directly to recipient sockets
+  socket.on("message:send", async (payload, ack) => {
+    try {
+      const { threadId, body = "", attachments = [] } = payload || {};
+      if (!threadId) throw new Error("threadId required");
+
+      const thread = await Thread.findById(threadId).lean();
+      if (!thread) throw new Error("Thread not found");
+
+      // verify membership
+      if (
+        ![String(thread.tenant), String(thread.landlord)].includes(String(uid))
+      ) {
+        throw new Error("Not a member of this thread");
+      }
+
+      const to =
+        String(uid) === String(thread.tenant) ? thread.landlord : thread.tenant;
+
+      const msg = await Message.create({
+        thread: threadId,
+        from: uid,
+        to,
+        body,
+        attachments,
+      });
+
+      const receiverRole =
+        String(to) === String(thread.tenant) ? "tenant" : "landlord";
+      await Thread.bumpUnread(threadId, receiverRole);
+
+      const full = await Message.findById(msg._id).lean();
+
+      // 1) emit to the thread room (for all who joined)
+      io.to(`thread:${threadId}`).emit("message:new", full);
+
+      // 2) directly emit to recipient sockets (they may not be in the room yet)
+      const recipientSockets = userSockets.get(String(to));
+      if (recipientSockets && recipientSockets.size > 0) {
+        const now = new Date();
+        await Message.findByIdAndUpdate(msg._id, { deliveredAt: now });
+
+        for (const sid of recipientSockets) {
+          io.to(sid).emit("message:new", { ...full, deliveredAt: now }); // ensure delivered timestamp client-side
+          io.to(sid).emit("thread:poke", {
+            threadId,
+            from: uid,
+            at: now.toISOString(),
+          });
+        }
+
+        // also inform room listeners about delivery
+        io.to(`thread:${threadId}`).emit("message:delivered", {
+          _id: msg._id,
+          deliveredAt: now,
+        });
+      }
+
+      // also echo to sender socket (in case they didn't join room yet)
+      io.to(socket.id).emit("message:new", full);
+
+      ack?.({ ok: true, message: full });
+    } catch (e) {
+      ack?.({ ok: false, error: e.message });
     }
   });
 
-  // Mark thread as read
-  socket.on("thread:read", async (threadId) => {
-    try {
-      const thread = await Thread.findById(threadId);
-      if (!thread) return;
-
-      const isTenant = String(thread.tenant) === uid;
-
-      await Message.updateMany(
-        { thread: threadId, readBy: { $ne: uid } },
-        { $push: { readBy: uid } }
-      );
-
-      if (isTenant) thread.unreadForTenant = 0;
-      else thread.unreadForLandlord = 0;
-      await thread.save();
-
-      io.to(`thread:${threadId}`).emit("thread:read:ack", {
-        threadId,
-        by: uid,
-      });
-    } catch {
-      // ignore
-    }
+  socket.on("typing", ({ threadId, isTyping }) => {
+    socket.to(`thread:${threadId}`).emit("typing", {
+      threadId,
+      userId: uid,
+      isTyping: !!isTyping,
+    });
   });
 
   socket.on("disconnect", () => {
@@ -197,9 +179,7 @@ io.on("connection", (socket) => {
   });
 });
 
-/* ----------------------------- SERVER ---------------------------- */
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🌍 CORS Origin allowed: ${CLIENT_URL}`);
 });

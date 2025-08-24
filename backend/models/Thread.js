@@ -1,3 +1,4 @@
+// backend/models/Thread.js
 const mongoose = require("mongoose");
 
 const ThreadSchema = new mongoose.Schema(
@@ -12,18 +13,32 @@ const ThreadSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    property: { type: mongoose.Schema.Types.ObjectId, ref: "Property" },
-    lastMessageAt: { type: Date },
-    lastMessagePreview: { type: String },
+
+    lastMessageAt: { type: Date, default: null },
+
+    // unread counters for each side
     unreadForTenant: { type: Number, default: 0 },
     unreadForLandlord: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
 
-ThreadSchema.index(
-  { tenant: 1, landlord: 1, property: 1 },
-  { unique: true, sparse: true }
-);
+// increase unread count for recipient
+ThreadSchema.statics.bumpUnread = async function (threadId, receiverRole) {
+  const incField =
+    receiverRole === "tenant" ? "unreadForTenant" : "unreadForLandlord";
+  await this.findByIdAndUpdate(threadId, {
+    $inc: { [incField]: 1 },
+    $set: { lastMessageAt: new Date() },
+  });
+};
 
-module.exports = mongoose.model("Thread", ThreadSchema);
+// clear unread when user opens thread
+ThreadSchema.statics.clearUnread = async function (threadId, viewerRole) {
+  const setField =
+    viewerRole === "tenant" ? "unreadForTenant" : "unreadForLandlord";
+  await this.findByIdAndUpdate(threadId, { $set: { [setField]: 0 } });
+};
+
+module.exports =
+  mongoose.models.Thread || mongoose.model("Thread", ThreadSchema);
