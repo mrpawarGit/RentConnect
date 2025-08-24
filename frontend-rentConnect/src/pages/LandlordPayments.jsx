@@ -1,41 +1,100 @@
+// RentConnect/frontend-rentConnect/src/pages/LandlordPayments.jsx
+
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
+
+function monthStartEnd(yyyyMm) {
+  // yyyyMm like "2025-08"
+  if (!yyyyMm) return { start: "", end: "" };
+  const [y, m] = yyyyMm.split("-").map(Number);
+  const start = new Date(y, m - 1, 1);
+  const end = new Date(y, m, 0); // last day of month
+  const fmt = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+  return { start: fmt(start), end: fmt(end) };
+}
+
+const badge = (s) =>
+  s === "paid"
+    ? "bg-green-100 text-green-700"
+    : s === "overdue"
+    ? "bg-red-100 text-red-700"
+    : s === "delayed"
+    ? "bg-yellow-100 text-yellow-700"
+    : "bg-gray-100 text-gray-700";
+
+// Helpers for month/year selects
+const MONTHS = [
+  { label: "January", value: 1 },
+  { label: "February", value: 2 },
+  { label: "March", value: 3 },
+  { label: "April", value: 4 },
+  { label: "May", value: 5 },
+  { label: "June", value: 6 },
+  { label: "July", value: 7 },
+  { label: "August", value: 8 },
+  { label: "September", value: 9 },
+  { label: "October", value: 10 },
+  { label: "November", value: 11 },
+  { label: "December", value: 12 },
+];
 
 export default function LandlordPayments() {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState({ status: "", q: "" });
   const [showForm, setShowForm] = useState(false);
+
+  const now = new Date();
   const [form, setForm] = useState({
     tenantId: "",
     propertyId: "",
     amount: "",
-    currency: "USD",
-    periodStart: "",
-    periodEnd: "",
+    currency: "INR", // ← default INR
+    periodMonth: "", // derived from selected year + month
+    month: now.getMonth() + 1, // 1-12
+    year: now.getFullYear(),
     dueDate: "",
     notes: "",
   });
+
   const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   async function load() {
-    const [inv, props] = await Promise.all([
-      api.get("/payments/landlord"),
-      api.get("/properties"),
-    ]);
-    setItems(inv.data);
-    setProperties(props.data);
+    try {
+      setLoading(true);
+      const [inv, props] = await Promise.all([
+        api.get("/payments/landlord"),
+        api.get("/properties"),
+      ]);
+      setItems(Array.isArray(inv.data) ? inv.data : []);
+      setProperties(Array.isArray(props.data) ? props.data : []);
+    } finally {
+      setLoading(false);
+    }
   }
+
   useEffect(() => {
     load();
   }, []);
+
+  // Keep periodMonth in sync with month + year
+  useEffect(() => {
+    if (!form.year || !form.month) return;
+    const yyyyMm = `${form.year}-${String(form.month).padStart(2, "0")}`;
+    setForm((f) => ({ ...f, periodMonth: yyyyMm }));
+  }, [form.year, form.month]);
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
       if (filter.status && i.status !== filter.status) return false;
       if (filter.q) {
         const t = filter.q.toLowerCase();
-        const hay =
-          `${i.tenant?.name} ${i.property?.title} ${i.amount} ${i.currency}`.toLowerCase();
+        const hay = `${i.tenant?.name ?? ""} ${i.property?.title ?? ""} ${
+          i.amount ?? ""
+        } ${i.currency ?? ""}`.toLowerCase();
         if (!hay.includes(t)) return false;
       }
       return true;
@@ -44,20 +103,43 @@ export default function LandlordPayments() {
 
   async function createInvoice(e) {
     e.preventDefault();
-    const payload = { ...form, amount: Number(form.amount) };
-    await api.post("/payments/invoice", payload);
-    setShowForm(false);
-    setForm({
-      tenantId: "",
-      propertyId: "",
-      amount: "",
-      currency: "USD",
-      periodStart: "",
-      periodEnd: "",
-      dueDate: "",
-      notes: "",
-    });
-    await load();
+
+    if (!form.periodMonth) {
+      alert("Please select a Month.");
+      return;
+    }
+    const { start, end } = monthStartEnd(form.periodMonth);
+
+    const payload = {
+      tenantId: form.tenantId,
+      propertyId: form.propertyId,
+      amount: Number(form.amount || 0),
+      currency: "INR", // enforce INR
+      periodStart: start,
+      periodEnd: end,
+      dueDate: form.dueDate,
+      notes: form.notes,
+    };
+
+    try {
+      await api.post("/payments/invoice", payload);
+      setShowForm(false);
+      setForm({
+        tenantId: "",
+        propertyId: "",
+        amount: "",
+        currency: "INR",
+        periodMonth: "",
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        dueDate: "",
+        notes: "",
+      });
+      await load();
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.message || "Failed to create invoice.");
+    }
   }
 
   async function approveDelay(id, approve) {
@@ -66,11 +148,16 @@ export default function LandlordPayments() {
       const input = prompt("New due date (YYYY-MM-DD) or leave blank:");
       if (input) newDueDate = input;
     }
-    await api.post(`/payments/invoice/${id}/approve-delay`, {
-      approve,
-      newDueDate,
-    });
-    await load();
+    try {
+      await api.post(`/payments/invoice/${id}/approve-delay`, {
+        approve,
+        newDueDate,
+      });
+      await load();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update delay request.");
+    }
   }
 
   return (
@@ -126,19 +213,28 @@ export default function LandlordPayments() {
           <tbody>
             {filtered.map((i) => (
               <tr key={i._id} className="border-t">
-                <td className="p-3">{i.tenant?.name}</td>
-                <td className="p-3">{i.property?.title}</td>
+                <td className="p-3">{i.tenant?.name || "—"}</td>
+                <td className="p-3">{i.property?.title || "—"}</td>
                 <td className="p-3">
-                  {new Date(i.periodStart).toLocaleDateString()} –{" "}
-                  {new Date(i.periodEnd).toLocaleDateString()}
+                  {i.periodStart
+                    ? new Date(i.periodStart).toLocaleDateString()
+                    : "—"}{" "}
+                  –{" "}
+                  {i.periodEnd
+                    ? new Date(i.periodEnd).toLocaleDateString()
+                    : "—"}
                 </td>
                 <td className="p-3">
-                  {new Date(i.dueDate).toLocaleDateString()}
+                  {i.dueDate ? new Date(i.dueDate).toLocaleDateString() : "—"}
                 </td>
                 <td className="p-3">
                   {i.amount} {i.currency}
                 </td>
-                <td className="p-3">{i.status}</td>
+                <td className="p-3">
+                  <span className={`px-2 py-1 rounded ${badge(i.status)}`}>
+                    {i.status}
+                  </span>
+                </td>
                 <td className="p-3 space-x-2">
                   {i.delayRequested && (
                     <>
@@ -161,8 +257,8 @@ export default function LandlordPayments() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td className="p-6 text-center text-gray-500" colSpan="7">
-                  No invoices.
+                <td className="p-6 text-center text-gray-500" colSpan={7}>
+                  {loading ? "Loading…" : "No invoices."}
                 </td>
               </tr>
             )}
@@ -172,28 +268,30 @@ export default function LandlordPayments() {
 
       {/* Create invoice modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-black border rounded p-6 w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          {/* Explicit light mode background + text, dark mode only via dark: */}
+          <div className="bg-white text-gray-900 dark:bg-neutral-900 dark:text-neutral-100 border rounded p-6 w-full max-w-lg shadow-xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Create Invoice</h3>
               <button
                 onClick={() => setShowForm(false)}
                 className="text-2xl leading-none"
+                aria-label="Close"
               >
                 ×
               </button>
             </div>
+
             <form onSubmit={createInvoice} className="space-y-3">
               <label className="block">
-                <div className="mb-1">Property (auto sets landlord)</div>
+                <div className="mb-1">Property (auto sets tenant)</div>
                 <select
-                  className="border rounded p-2 w-full"
+                  className="border rounded p-2 w-full bg-white dark:bg-neutral-900"
                   required
                   value={form.propertyId}
                   onChange={(e) => {
                     const propertyId = e.target.value;
                     const prop = properties.find((p) => p._id === propertyId);
-                    // Pick first tenant from property for now (can improve to select)
                     const tenantId = prop?.tenants?.[0]?._id || "";
                     setForm((f) => ({ ...f, propertyId, tenantId }));
                   }}
@@ -211,7 +309,7 @@ export default function LandlordPayments() {
                 <label className="block">
                   <div className="mb-1">Amount</div>
                   <input
-                    className="border rounded p-2 w-full"
+                    className="border rounded p-2 w-full bg-white dark:bg-neutral-900"
                     type="number"
                     min="0"
                     step="0.01"
@@ -222,49 +320,67 @@ export default function LandlordPayments() {
                     }
                   />
                 </label>
+
+                {/* Currency locked to INR */}
                 <label className="block">
                   <div className="mb-1">Currency</div>
-                  <input
-                    className="border rounded p-2 w-full"
+                  <select
+                    className="border rounded p-2 w-full bg-white dark:bg-neutral-900"
                     value={form.currency}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, currency: e.target.value }))
-                    }
-                  />
+                    disabled
+                    onChange={() => {}}
+                  >
+                    <option value="INR">INR</option>
+                  </select>
                 </label>
               </div>
 
+              {/* Month + Year selects */}
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <div className="mb-1">Period start</div>
-                  <input
-                    className="border rounded p-2 w-full"
-                    type="date"
+                  <div className="mb-1">Month</div>
+                  <select
+                    className="border rounded p-2 w-full bg-white dark:bg-neutral-900"
                     required
-                    value={form.periodStart}
+                    value={form.month}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, periodStart: e.target.value }))
+                      setForm((f) => ({ ...f, month: Number(e.target.value) }))
                     }
-                  />
+                  >
+                    {MONTHS.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+
                 <label className="block">
-                  <div className="mb-1">Period end</div>
-                  <input
-                    className="border rounded p-2 w-full"
-                    type="date"
+                  <div className="mb-1">Year</div>
+                  <select
+                    className="border rounded p-2 w-full bg-white dark:bg-neutral-900"
                     required
-                    value={form.periodEnd}
+                    value={form.year}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, periodEnd: e.target.value }))
+                      setForm((f) => ({ ...f, year: Number(e.target.value) }))
                     }
-                  />
+                  >
+                    {Array.from({ length: 7 }).map((_, i) => {
+                      const y = now.getFullYear() - 2 + i; // show a small sensible range
+                      return (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </label>
               </div>
 
               <label className="block">
                 <div className="mb-1">Due date</div>
                 <input
-                  className="border rounded p-2 w-full"
+                  className="border rounded p-2 w-full bg-white dark:bg-neutral-900"
                   type="date"
                   required
                   value={form.dueDate}
@@ -277,8 +393,8 @@ export default function LandlordPayments() {
               <label className="block">
                 <div className="mb-1">Notes (optional)</div>
                 <textarea
-                  className="border rounded p-2 w-full"
-                  rows="2"
+                  className="border rounded p-2 w-full bg-white dark:bg-neutral-900"
+                  rows={2}
                   value={form.notes}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, notes: e.target.value }))
@@ -294,7 +410,7 @@ export default function LandlordPayments() {
                 >
                   Cancel
                 </button>
-                <button className="border rounded px-3 py-1 hover:bg-gray-50">
+                <button className="border rounded px-3 py-1 hover:bg-gray-50 dark:hover:bg-neutral-800">
                   Create
                 </button>
               </div>

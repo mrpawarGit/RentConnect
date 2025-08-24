@@ -1,25 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
-import api from "../lib/api";
+// frontend-rentConnect/src/pages/TenantPayments.jsx
 
-function startOfMonth(d) {
-  const x = new Date(d);
-  x.setDate(1);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function endOfMonth(d) {
-  const x = new Date(d);
-  x.setMonth(x.getMonth() + 1, 0);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
-function sameDay(a, b) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
+import React, { useEffect, useState } from "react";
+import api from "../lib/api";
 
 const badge = (s) =>
   s === "paid"
@@ -35,43 +17,47 @@ export default function TenantPayments() {
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    setLoading(true);
-    const { data } = await api.get("/payments/tenant");
-    setInvoices(data);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const { data } = await api.get("/payments/tenant");
+      setInvoices(Array.isArray(data) ? data : []);
+    } finally {
+      setLoading(false);
+    }
   }
+
   useEffect(() => {
     load();
   }, []);
 
-  const today = new Date();
-  const [cursor, setCursor] = useState(startOfMonth(today));
-  const days = useMemo(() => {
-    const start = startOfMonth(cursor);
-    const end = endOfMonth(cursor);
-    const arr = [];
-    const cur = new Date(start);
-    while (cur <= end) {
-      arr.push(new Date(cur));
-      cur.setDate(cur.getDate() + 1);
-    }
-    return arr;
-  }, [cursor]);
-
-  function invOn(day) {
-    return invoices.filter((i) => sameDay(new Date(i.dueDate), day));
-  }
-
   async function markPaid(id) {
-    await api.post(`/payments/invoice/${id}/paid`);
-    await load();
+    try {
+      await api.post(`/payments/invoice/${id}/paid`);
+      await load();
+    } catch (e) {
+      console.error(e);
+      alert("Failed to mark as paid. Please try again.");
+    }
   }
 
   async function requestDelay(id) {
     const reason = prompt("Reason for delay?");
+    if (reason === null) return; // user cancelled
+
     const newDueDate = prompt("Proposed new due date? (YYYY-MM-DD)");
-    await api.post(`/payments/invoice/${id}/delay`, { reason, newDueDate });
-    await load();
+    if (newDueDate === null) return; // user cancelled
+    if (!newDueDate || isNaN(Date.parse(newDueDate))) {
+      alert("Please enter a valid date in YYYY-MM-DD format.");
+      return;
+    }
+
+    try {
+      await api.post(`/payments/invoice/${id}/delay`, { reason, newDueDate });
+      await load();
+    } catch (e) {
+      console.error(e);
+      alert("Failed to request delay. Please try again.");
+    }
   }
 
   if (loading) return <p>Loading payments…</p>;
@@ -79,62 +65,7 @@ export default function TenantPayments() {
   return (
     <section className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Rent Calendar</h2>
-        <div className="space-x-2">
-          <button
-            className="border rounded px-3 py-1"
-            onClick={() =>
-              setCursor(
-                new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1)
-              )
-            }
-          >
-            Prev
-          </button>
-          <button
-            className="border rounded px-3 py-1"
-            onClick={() =>
-              setCursor(
-                new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
-              )
-            }
-          >
-            Next
-          </button>
-        </div>
-      </div>
-      <div className="grid grid-cols-7 gap-2">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-          <div key={d} className="text-center text-xs text-gray-500">
-            {d}
-          </div>
-        ))}
-        {days.map((day, i) => {
-          const list = invOn(day);
-          return (
-            <div
-              key={i}
-              className={`border rounded p-2 min-h-[90px] ${
-                sameDay(day, today) ? "border-blue-500" : ""
-              }`}
-            >
-              <div className="text-xs text-gray-600">{day.getDate()}</div>
-              <div className="space-y-1 mt-1">
-                {list.map((inv) => (
-                  <div
-                    key={inv._id}
-                    className={`text-[11px] px-1 py-0.5 rounded ${badge(
-                      inv.status
-                    )}`}
-                    title={`${inv.property?.title} • ${inv.amount} ${inv.currency}`}
-                  >
-                    {inv.amount} {inv.currency}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        <h2 className="text-2xl font-semibold">Rent Invoices</h2>
       </div>
 
       <div>
@@ -154,13 +85,20 @@ export default function TenantPayments() {
             <tbody>
               {invoices.map((inv) => (
                 <tr key={inv._id} className="border-t">
-                  <td className="p-3">{inv.property?.title}</td>
+                  <td className="p-3">{inv.property?.title || "—"}</td>
                   <td className="p-3">
-                    {new Date(inv.periodStart).toLocaleDateString()} –{" "}
-                    {new Date(inv.periodEnd).toLocaleDateString()}
+                    {inv.periodStart
+                      ? new Date(inv.periodStart).toLocaleDateString()
+                      : "—"}{" "}
+                    –{" "}
+                    {inv.periodEnd
+                      ? new Date(inv.periodEnd).toLocaleDateString()
+                      : "—"}
                   </td>
                   <td className="p-3">
-                    {new Date(inv.dueDate).toLocaleDateString()}
+                    {inv.dueDate
+                      ? new Date(inv.dueDate).toLocaleDateString()
+                      : "—"}
                   </td>
                   <td className="p-3">
                     {inv.amount} {inv.currency}
@@ -190,9 +128,10 @@ export default function TenantPayments() {
                   </td>
                 </tr>
               ))}
+
               {invoices.length === 0 && (
                 <tr>
-                  <td className="p-6 text-center text-gray-500" colSpan="6">
+                  <td className="p-6 text-center text-gray-500" colSpan={6}>
                     No invoices yet.
                   </td>
                 </tr>
