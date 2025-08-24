@@ -1,4 +1,3 @@
-// backend/models/Thread.js
 const mongoose = require("mongoose");
 
 const ThreadSchema = new mongoose.Schema(
@@ -13,8 +12,8 @@ const ThreadSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-
     lastMessageAt: { type: Date, default: null },
+    lastMessage: { type: String, default: "" }, // Store last message text for preview
 
     // unread counters for each side
     unreadForTenant: { type: Number, default: 0 },
@@ -23,13 +22,25 @@ const ThreadSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Add compound index for unique tenant-landlord pairs
+ThreadSchema.index({ tenant: 1, landlord: 1 }, { unique: true });
+ThreadSchema.index({ tenant: 1 });
+ThreadSchema.index({ landlord: 1 });
+
 // increase unread count for recipient
-ThreadSchema.statics.bumpUnread = async function (threadId, receiverRole) {
+ThreadSchema.statics.bumpUnread = async function (
+  threadId,
+  receiverRole,
+  messageText = ""
+) {
   const incField =
     receiverRole === "tenant" ? "unreadForTenant" : "unreadForLandlord";
   await this.findByIdAndUpdate(threadId, {
     $inc: { [incField]: 1 },
-    $set: { lastMessageAt: new Date() },
+    $set: {
+      lastMessageAt: new Date(),
+      lastMessage: messageText.substring(0, 100), // Store preview
+    },
   });
 };
 

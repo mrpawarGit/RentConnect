@@ -1,4 +1,3 @@
-// backend/routes/chat.js
 const router = require("express").Router();
 const { authenticate } = require("../middleware/authMiddleware");
 const Thread = require("../models/Thread");
@@ -10,18 +9,21 @@ const User = require("../models/User");
    THREAD LIST & MESSAGES
    ========================= */
 
-// List threads for current user
+// List threads for current user with populated user info
 router.get("/threads", authenticate, async (req, res) => {
   try {
     const me = req.user.id;
     const threads = await Thread.find({
       $or: [{ tenant: me }, { landlord: me }],
     })
+      .populate("tenant", "name email")
+      .populate("landlord", "name email")
       .sort({ lastMessageAt: -1, updatedAt: -1 })
       .lean();
 
     res.json(threads);
   } catch (e) {
+    console.error("Error fetching threads:", e);
     res.status(500).json({ message: e.message });
   }
 });
@@ -31,17 +33,85 @@ router.get("/threads/:id/messages", authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { before, limit = 30 } = req.query;
+    const me = req.user.id;
+
+    // Verify user is part of this thread
+    const thread = await Thread.findById(id);
+    if (!thread) {
+      return res.status(404).json({ message: "Thread not found" });
+    }
+
+    if (
+      ![String(thread.tenant), String(thread.landlord)].includes(String(me))
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
 
     const q = { thread: id };
     if (before) q.createdAt = { $lt: new Date(before) };
 
     const items = await Message.find(q)
+      .populate("from", "name email")
+      .populate("to", "name email")
       .sort({ createdAt: -1 })
       .limit(Number(limit))
       .lean();
 
     res.json(items.reverse()); // oldest -> newest
   } catch (e) {
+    console.error("Error fetching messages:", e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Send message via REST API (fallback when socket fails)
+router.post("/threads/:id/messages", authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { body = "", attachments = [] } = req.body;
+    const me = req.user.id;
+
+    if (!body.trim() && (!attachments || attachments.length === 0)) {
+      return res
+        .status(400)
+        .json({ message: "Message body or attachments required" });
+    }
+
+    const thread = await Thread.findById(id).lean();
+    if (!thread) {
+      return res.status(404).json({ message: "Thread not found" });
+    }
+
+    // verify membership
+    if (
+      ![String(thread.tenant), String(thread.landlord)].includes(String(me))
+    ) {
+      return res.status(403).json({ message: "Not a member of this thread" });
+    }
+
+    const to =
+      String(me) === String(thread.tenant) ? thread.landlord : thread.tenant;
+
+    const msg = await Message.create({
+      thread: id,
+      from: me,
+      to,
+      body: body.trim(),
+      attachments,
+    });
+
+    const receiverRole =
+      String(to) === String(thread.tenant) ? "tenant" : "landlord";
+    await Thread.bumpUnread(id, receiverRole, body.trim());
+
+    const full = await Message.findById(msg._id)
+      .populate("from", "name email")
+      .populate("to", "name email")
+      .lean();
+
+    res.json(full);
+  } catch (e) {
+    console.error("Error sending message via REST:", e);
     res.status(500).json({ message: e.message });
   }
 });
@@ -52,13 +122,31 @@ router.post("/threads/:id/read", authenticate, async (req, res) => {
     const me = req.user.id;
     const { id } = req.params;
 
+    // Verify user is part of this thread
+    const thread = await Thread.findById(id);
+    if (!thread) {
+      return res.status(404).json({ message: "Thread not found" });
+    }
+
+    if (
+      ![String(thread.tenant), String(thread.landlord)].includes(String(me))
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
     await Message.updateMany(
       { thread: id, to: me, readAt: null },
       { $set: { readAt: new Date() } }
     );
 
+    // Clear unread count
+    const viewerRole =
+      String(me) === String(thread.tenant) ? "tenant" : "landlord";
+    await Thread.clearUnread(id, viewerRole);
+
     res.json({ ok: true });
   } catch (e) {
+    console.error("Error marking messages as read:", e);
     res.status(500).json({ message: e.message });
   }
 });
@@ -68,8 +156,6 @@ router.post("/threads/:id/read", authenticate, async (req, res) => {
    ========================= */
 
 // List chat partners for current user
-// - Landlord: all unique tenants across properties they own
-// - Tenant: the landlord(s) of properties they belong to
 router.get("/partners", authenticate, async (req, res) => {
   try {
     const me = req.user.id;
@@ -126,36 +212,49 @@ router.get("/partners", authenticate, async (req, res) => {
       });
     }
   } catch (e) {
+    console.error("Error fetching partners:", e);
     res.status(500).json({ message: e.message });
   }
 });
 
 // Ensure a thread exists between a tenant & landlord, return it
-// Body: { tenantId, landlordId }
 router.post("/threads/ensure", authenticate, async (req, res) => {
   try {
     const { tenantId, landlordId } = req.body || {};
-    if (!tenantId || !landlordId)
-      return res
-        .status(400)
-        .json({ message: "tenantId and landlordId are required" });
+    const me = req.user.id;
+
+    if (!tenantId || !landlordId) {
+      return res.status(400).json({
+        message: "tenantId and landlordId are required",
+      });
+    }
 
     // Validate users exist
     const [tenant, landlord] = await Promise.all([
-      User.findById(tenantId).select("_id role").lean(),
-      User.findById(landlordId).select("_id role").lean(),
+      User.findById(tenantId).select("_id role name email").lean(),
+      User.findById(landlordId).select("_id role name email").lean(),
     ]);
-    if (!tenant || tenant.role !== "tenant")
-      return res.status(400).json({ message: "Invalid tenantId" });
-    if (!landlord || landlord.role !== "landlord")
-      return res.status(400).json({ message: "Invalid landlordId" });
 
-    // Validate relationship:
-    // - tenant must belong to at least one property owned by landlord
+    if (!tenant || tenant.role !== "tenant") {
+      return res.status(400).json({ message: "Invalid tenantId" });
+    }
+    if (!landlord || landlord.role !== "landlord") {
+      return res.status(400).json({ message: "Invalid landlordId" });
+    }
+
+    // Verify the requesting user is part of this relationship
+    if (![String(tenantId), String(landlordId)].includes(String(me))) {
+      return res.status(403).json({
+        message: "You can only create threads you're part of",
+      });
+    }
+
+    // Validate relationship: tenant must belong to property owned by landlord
     const rel = await Property.exists({
       landlord: landlordId,
       tenants: tenantId,
     });
+
     if (!rel) {
       return res.status(403).json({
         message: "No property relationship between this landlord and tenant.",
@@ -179,8 +278,13 @@ router.post("/threads/ensure", authenticate, async (req, res) => {
       thread = thread.toObject();
     }
 
+    // Populate user info
+    thread.tenant = tenant;
+    thread.landlord = landlord;
+
     res.json(thread);
   } catch (e) {
+    console.error("Error ensuring thread:", e);
     res.status(500).json({ message: e.message });
   }
 });

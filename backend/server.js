@@ -1,4 +1,3 @@
-// backend/server.js
 require("dotenv").config();
 
 const path = require("path");
@@ -13,7 +12,12 @@ const Thread = require("./models/Thread");
 const Message = require("./models/Message");
 
 const app = express();
-app.use(cors({ origin: process.env.CLIENT_URL || true, credentials: true }));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || true,
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -22,11 +26,11 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 connectDB();
 
-/* ---------- ROUTES (keep your existing mounts) ---------- */
+/* ---------- ROUTES ---------- */
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/maintenance", require("./routes/maintenance"));
 app.use("/api/properties", require("./routes/property"));
-app.use("/api/payments", require("./routes/payments")); // plural
+app.use("/api/payments", require("./routes/payments"));
 app.use("/api/tenant", require("./routes/tenant"));
 app.use("/api/landlord", require("./routes/landlord"));
 app.use("/api/chat", require("./routes/chat"));
@@ -40,7 +44,10 @@ if (process.env.NODE_ENV === "production") {
 /* -------------------- SOCKET.IO -------------------- */
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: process.env.CLIENT_URL || true, credentials: true },
+  cors: {
+    origin: process.env.CLIENT_URL || true,
+    credentials: true,
+  },
   path: "/socket.io",
 });
 
@@ -50,10 +57,13 @@ io.use((socket, next) => {
     const auth = socket.handshake.auth?.token || "";
     const token = auth.replace("Bearer ", "");
     if (!token) return next(new Error("Unauthorized"));
+
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     socket.user = { id: String(payload.id), role: payload.role };
+    console.log(`User ${payload.id} connected via socket`);
     next();
   } catch (e) {
+    console.error("Socket auth error:", e.message);
     next(new Error("Unauthorized"));
   }
 });
@@ -63,11 +73,23 @@ const userSockets = new Map();
 
 io.on("connection", (socket) => {
   const uid = socket.user.id;
+
+  // Track user connections
   if (!userSockets.has(uid)) userSockets.set(uid, new Set());
   userSockets.get(uid).add(socket.id);
 
+  console.log(
+    `User ${uid} connected, total connections: ${userSockets.get(uid).size}`
+  );
+
   socket.on("thread:join", (threadId) => {
+    console.log(`User ${uid} joining thread ${threadId}`);
     socket.join(`thread:${threadId}`);
+  });
+
+  socket.on("thread:leave", (threadId) => {
+    console.log(`User ${uid} leaving thread ${threadId}`);
+    socket.leave(`thread:${threadId}`);
   });
 
   socket.on("thread:opened", async ({ threadId }) => {
@@ -76,6 +98,14 @@ io.on("connection", (socket) => {
 
       const thread = await Thread.findById(threadId).lean();
       if (!thread) return;
+
+      // Verify user is part of this thread
+      if (
+        ![String(thread.tenant), String(thread.landlord)].includes(String(uid))
+      ) {
+        return;
+      }
+
       const viewerRole =
         String(uid) === String(thread.tenant) ? "tenant" : "landlord";
 
@@ -92,7 +122,9 @@ io.on("connection", (socket) => {
         readAt: now,
         readerId: uid,
       });
-    } catch (_) {}
+    } catch (e) {
+      console.error("Error in thread:opened:", e);
+    }
   });
 
   // SEND MESSAGE: emit to thread room AND directly to recipient sockets
@@ -100,6 +132,9 @@ io.on("connection", (socket) => {
     try {
       const { threadId, body = "", attachments = [] } = payload || {};
       if (!threadId) throw new Error("threadId required");
+      if (!body.trim() && (!attachments || attachments.length === 0)) {
+        throw new Error("Message body or attachments required");
+      }
 
       const thread = await Thread.findById(threadId).lean();
       if (!thread) throw new Error("Thread not found");
@@ -118,15 +153,18 @@ io.on("connection", (socket) => {
         thread: threadId,
         from: uid,
         to,
-        body,
+        body: body.trim(),
         attachments,
       });
 
       const receiverRole =
         String(to) === String(thread.tenant) ? "tenant" : "landlord";
-      await Thread.bumpUnread(threadId, receiverRole);
+      await Thread.bumpUnread(threadId, receiverRole, body.trim());
 
-      const full = await Message.findById(msg._id).lean();
+      const full = await Message.findById(msg._id)
+        .populate("from", "name email")
+        .populate("to", "name email")
+        .lean();
 
       // 1) emit to the thread room (for all who joined)
       io.to(`thread:${threadId}`).emit("message:new", full);
@@ -138,7 +176,7 @@ io.on("connection", (socket) => {
         await Message.findByIdAndUpdate(msg._id, { deliveredAt: now });
 
         for (const sid of recipientSockets) {
-          io.to(sid).emit("message:new", { ...full, deliveredAt: now }); // ensure delivered timestamp client-side
+          io.to(sid).emit("message:new", { ...full, deliveredAt: now });
           io.to(sid).emit("thread:poke", {
             threadId,
             from: uid,
@@ -153,11 +191,9 @@ io.on("connection", (socket) => {
         });
       }
 
-      // also echo to sender socket (in case they didn't join room yet)
-      io.to(socket.id).emit("message:new", full);
-
       ack?.({ ok: true, message: full });
     } catch (e) {
+      console.error("Error in message:send:", e);
       ack?.({ ok: false, error: e.message });
     }
   });
@@ -171,10 +207,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    console.log(`User ${uid} disconnected`);
     const set = userSockets.get(uid);
     if (set) {
       set.delete(socket.id);
-      if (set.size === 0) userSockets.delete(uid);
+      if (set.size === 0) {
+        userSockets.delete(uid);
+      }
     }
   });
 });
