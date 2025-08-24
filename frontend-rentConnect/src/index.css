@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@tailwind utilities;
+/* @tailwind utilities; */
 
 :root {
   --color-bg: #ffffff; /* white background */

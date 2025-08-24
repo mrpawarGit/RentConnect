@@ -118,7 +118,7 @@ export default function LandlordRequests() {
       {/* Table */}
       <div className="overflow-x-auto border rounded">
         <table className="min-w-full text-sm">
-          <thead className="bg-gray-50">
+          <thead className="bg-[var(--color-primary)] text-[var(--color-bg)]">
             <tr>
               <th className="text-left p-3">Property</th>
               <th className="text-left p-3">Tenant</th>
@@ -156,9 +156,11 @@ export default function LandlordRequests() {
                         href={a}
                         target="_blank"
                         rel="noreferrer"
-                        className="underline"
+                        // className="underline"
                       >
-                        file{i + 1}
+                        <div className="border border-solid border-primary px-2 py-1 rounded text-sm">
+                          File-{i + 1}
+                        </div>
                       </a>
                     ))}
                   </div>
@@ -169,7 +171,7 @@ export default function LandlordRequests() {
                       key={s}
                       disabled={updatingId === r._id || r.status === s}
                       onClick={() => updateStatus(r._id, s)}
-                      className="px-2 py-1 border rounded hover:bg-gray-50 disabled:opacity-50"
+                      className="px-2 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
                     >
                       {s.replace("_", " ")}
                     </button>
