@@ -21,56 +21,45 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-bg">
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+      <section className="relative overflow-hidden m-16">
+        {/* Decorative blobs */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute -top-32 -left-24 h-72 w-72 rounded-full bg-primary opacity-10 blur-3xl" />
+          <div className="absolute -bottom-32 -right-24 h-72 w-72 rounded-full bg-primary opacity-10 blur-3xl" />
         </div>
-        <div className="max-w-6xl mx-auto px-6 py-20 text-center space-y-6">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-primary">
+
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24 text-center space-y-6">
+          <h1 className="mx-auto max-w-3xl text-3xl sm:text-5xl lg:text-6xl font-extrabold text-primary tracking-tight">
             Streamline Tenant & Landlord Communication
           </h1>
-          <p className="text-lg md:text-xl text-gray-800 dark:text-gray-400 max-w-3xl mx-auto">
+          <p className="mx-auto max-w-2xl text-base sm:text-lg lg:text-xl opacity-80">
             Manage maintenance, payments, and messages in one intuitive platform
             with real-time updates and complete transparency.
           </p>
 
           {/* CTA Area */}
           {!loading && !user ? (
-            <div className="flex items-center justify-center gap-3">
-              <Link
-                to="/register"
-                className="px-6 py-3 bg-primary text-white rounded-lg shadow hover:bg-primary-hover transition"
-              >
-                Get Started Free
-              </Link>
-              <Link
-                to="/login"
-                className="px-6 py-3 border border-primary text-primary rounded-lg hover:bg-primary/5 transition"
-              >
-                Login
-              </Link>
-            </div>
+            <div></div>
           ) : !loading && user ? (
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 to="/dashboard"
-                className="px-6 py-3 bg-primary text-white rounded-lg shadow hover:bg-primary-hover transition"
+                className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-primary text-white shadow transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/70"
               >
                 Open Dashboard
               </Link>
-              <div className="hidden md:flex gap-2">
+              <div className="flex w-full sm:w-auto flex-col sm:flex-row gap-2">
                 <Link
                   to="/requests/new"
-                  className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition"
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-primary text-primary transition bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/30"
                 >
                   Report Issue
                 </Link>
                 <Link
                   to="/payments"
-                  className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition"
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-primary text-primary transition bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/30"
                 >
                   View Payments
                 </Link>
@@ -79,7 +68,7 @@ export default function LandingPage() {
           ) : null}
 
           {/* Trust / Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-10">
+          <div className="mx-auto grid max-w-3xl grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-8">
             {[
               { label: "Active Rentals", value: "2k+", icon: "🏠" },
               { label: "Issues Resolved", value: "15k+", icon: "🛠️" },
@@ -88,17 +77,17 @@ export default function LandingPage() {
             ].map((s, i) => (
               <div
                 key={i}
-                className="bg-bg p-4 rounded-lg border border-primary/20 flex items-center justify-between"
+                className="bg-bg backdrop-blur p-4 rounded-2xl border border-primary flex items-center justify-between shadow-sm"
               >
                 <div className="text-left">
-                  <p className="text-xs text-gray-800 dark:text-gray-500">
-                    {s.label}
-                  </p>
-                  <p className="text-2xl font-semibold text-primary">
+                  <p className="text-[11px] sm:text-xs opacity-70">{s.label}</p>
+                  <p className="text-xl sm:text-2xl font-semibold text-primary">
                     {s.value}
                   </p>
                 </div>
-                <span className="text-2xl">{s.icon}</span>
+                <span className="text-2xl" aria-hidden>
+                  {s.icon}
+                </span>
               </div>
             ))}
           </div>
@@ -106,11 +95,14 @@ export default function LandingPage() {
       </section>
 
       {/* Feature Grid */}
-      <section id="features" className="max-w-6xl mx-auto px-6 py-14">
-        <h2 className="text-2xl md:text-3xl font-bold text-primary text-center mb-8">
+      <section
+        id="features"
+        className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14"
+      >
+        <h2 className="text-2xl md:text-3xl font-bold text-primary text-center mb-6 sm:mb-8">
           Everything you need to stay in sync
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {[
             {
               title: "Intuitive Maintenance",
@@ -145,121 +137,59 @@ export default function LandingPage() {
           ].map((f, i) => (
             <div
               key={i}
-              className="bg-bg p-5 rounded-lg border border-primary/30"
+              className="bg-bg p-5 rounded-2xl border border-primary hover:border-primary/40 transition shadow-sm"
             >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-primary">{f.title}</h3>
-                <span className="text-2xl">{f.icon}</span>
+                <span className="text-2xl" aria-hidden>
+                  {f.icon}
+                </span>
               </div>
-              <p className="text-sm text-gray-800 dark:text-gray-500">
-                {f.desc}
-              </p>
+              <p className="text-sm opacity-80">{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how-it-works" className="bg-bg border-y border-primary/20">
-        <div className="max-w-6xl mx-auto px-6 py-14">
-          <h2 className="text-2xl md:text-3xl font-bold text-primary text-center mb-8">
-            How RentConnect works
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              {
-                step: 1,
-                title: "Sign up or Login",
-                desc: "Create an account or sign in to your existing one.",
-              },
-              {
-                step: 2,
-                title: "Report & Track",
-                desc: "Submit maintenance requests with details and track progress in real time.",
-              },
-              {
-                step: 3,
-                title: "Chat & Pay",
-                desc: "Message your landlord and stay on top of rent with reminders and history.",
-              },
-            ].map((s) => (
-              <div
-                key={s.step}
-                className="p-5 rounded-lg border border-primary/30"
-              >
-                <div className="text-xs text-gray-800 dark:text-gray-500 mb-1">
-                  Step {s.step}
-                </div>
-                <h3 className="font-semibold text-primary mb-1">{s.title}</h3>
-                <p className="text-sm text-gray-800 dark:text-gray-500">
-                  {s.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Roles / Persona cards */}
-      <section id="roles" className="max-w-6xl mx-auto px-6 py-14">
-        <h2 className="text-2xl md:text-3xl font-bold text-primary text-center mb-8">
+      <section
+        id="roles"
+        className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14"
+      >
+        <h2 className="text-2xl md:text-3xl font-bold text-primary text-center mb-6 sm:mb-8">
           Built for tenants and landlords
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Tenant card */}
-          <div className="border border-primary/30 rounded-lg p-5">
+          <div className="border border-primary rounded-2xl p-5 bg-bg shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold text-primary">For Tenants</h3>
-              <span className="text-2xl">👩‍💼</span>
+              <span className="text-2xl" aria-hidden>
+                👩‍💼
+              </span>
             </div>
-            <ul className="text-sm text-gray-800 dark:text-gray-500 space-y-2 list-disc list-inside">
+            <ul className="text-sm opacity-80 space-y-2 list-disc list-inside">
               <li>Report issues with images/videos</li>
               <li>Track requests with clear statuses</li>
               <li>Get rent reminders & history</li>
               <li>Message your landlord instantly</li>
             </ul>
-            {/* <div className="mt-4 flex gap-2">
-              <Link
-                to="/register"
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition"
-              >
-                Get Started
-              </Link>
-              <Link
-                to="/requests/new"
-                className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition"
-              >
-                Report Issue
-              </Link>
-            </div> */}
           </div>
 
           {/* Landlord card */}
-          <div className="border border-primary/30 rounded-lg p-5">
+          <div className="border border-primary rounded-2xl p-5 bg-bg shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold text-primary">For Landlords</h3>
-              <span className="text-2xl">🧑‍🔧</span>
+              <span className="text-2xl" aria-hidden>
+                🧑‍🔧
+              </span>
             </div>
-            <ul className="text-sm text-gray-800 dark:text-gray-500 space-y-2 list-disc list-inside">
+            <ul className="text-sm opacity-80 space-y-2 list-disc list-inside">
               <li>Filter issues by property, urgency, or status</li>
               <li>Update progress and notify tenants</li>
               <li>Export maintenance history (CSV/PDF)</li>
               <li>Monitor rent payments across properties</li>
             </ul>
-            {/* <div className="mt-4 flex gap-2">
-              <Link
-                to="/register"
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition"
-              >
-                Create Accountt
-              </Link>
-              <Link
-                to="/payments/admin"
-                className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition"
-              >
-                View Payments
-              </Link>
-            </div> */}
           </div>
         </div>
       </section>
