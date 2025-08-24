@@ -287,7 +287,7 @@ export default function Chat() {
         );
 
         if (tempId) {
-          // Replace optimistic message with real one
+          // Replace optimistic message with real one (or drop if echo already in list)
           setMessages((prev) => {
             const real = response.data;
             const existsById = prev.some(
@@ -300,7 +300,7 @@ export default function Chat() {
             return prev.map((m) => (m._id === tempId ? real : m));
           });
         } else {
-          // Add new message (only when not replacing optimistic)
+          // Add new message unless server echo already added it
           const newMessage = {
             _id: response.data._id,
             thread: current._id,
@@ -312,7 +312,6 @@ export default function Chat() {
             readAt: null,
           };
           setMessages((prev) => {
-            // If server echo already added it, don't duplicate
             if (prev.some((m) => String(m._id) === String(newMessage._id))) {
               return prev;
             }
@@ -626,7 +625,7 @@ export default function Chat() {
         </aside>
 
         {/* Right column: conversation */}
-        <main className="md:col-span-2 border rounded-lg flex flex-col min-h:[70vh]">
+        <main className="md:col-span-2 border rounded-lg flex flex-col min-h-[70vh]">
           <div className="px-4 py-3 border-b flex items-center justify-between">
             <div className="font-semibold">
               {current
@@ -638,7 +637,8 @@ export default function Chat() {
             {typingPeer && <div className="text-xs text-gray-500">Typing…</div>}
           </div>
 
-          <div className="flex-1 p-4 overflow-y-auto space-y-2">
+          {/* Messages list is a flex column so self-start/self-end align left/right */}
+          <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-2">
             {loadingMsgs && current && (
               <div className="text-sm text-gray-500">Loading messages…</div>
             )}
