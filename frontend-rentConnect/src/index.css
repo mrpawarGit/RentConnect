@@ -1,33 +1,23 @@
+/* src/index.css */
 @import "tailwindcss";
-/* @tailwind utilities; */
 
 :root {
-  --color-bg: #ffffff; /* white background */
-  --color-text: #000000; /* black text */
-  --color-primary: #000000; /* black primary */
-  --color-primary-hover: #444444; /* dark gray hover on primary buttons */
+  --color-bg: #ffffff;
+  --color-text: #000000;
+  --color-primary: #000000;
+  --color-primary-hover: #444444;
 }
 
 .dark {
-  --color-bg: #000000; /* black background */
-  --color-text: #ffffff; /* white text */
-  --color-primary: #ffffff; /* white primary */
-  --color-primary-hover: #dddddd; /* light gray hover */
+  --color-bg: #000000;
+  --color-text: #ffffff;
+  --color-primary: #ffffff;
+  --color-primary-hover: #dddddd;
 }
 
-/* Use Tailwind utilities along with CSS variables */
-body,
-html {
+/* Custom utility classes */
+.bg-bg {
   background-color: var(--color-bg);
-  color: var(--color-text);
-}
-
-.bg-custom {
-  background-color: var(--color-bg);
-}
-
-.text-custom {
-  color: var(--color-text);
 }
 
 .text-primary {
@@ -38,10 +28,25 @@ html {
   background-color: var(--color-primary);
 }
 
-.hover-bg-primary:hover {
+.border-primary {
+  border-color: var(--color-primary);
+}
+
+.bg-primary-hover:hover {
   background-color: var(--color-primary-hover);
 }
 
-.border-primary {
-  border-color: var(--color-primary);
+/* Apply base styles */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Ensure white text on primary buttons */
+.bg-primary {
+  color: white;
+}
+
+.dark .bg-primary {
+  color: black;
 }
