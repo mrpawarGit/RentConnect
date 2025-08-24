@@ -63,7 +63,7 @@ export default function Register() {
                 type="text"
                 required
                 className="w-full rounded-xl border border-primary px-3 py-2 bg-bg outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[color:var(--color-primary)]"
-                placeholder="John Doe"
+                placeholder="Leo Messi"
               />
             </label>
 
