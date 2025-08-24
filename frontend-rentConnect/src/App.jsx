@@ -8,6 +8,11 @@ import DashboardRouter from "./pages/DashboardRouter";
 import PrivateRoute from "./components/PrivateRoute";
 import SubmitRequest from "./pages/SubmitRequest";
 import MyRequests from "./pages/MyRequests";
+import LandlordRequests from "./pages/LandlordRequests";
+import Chat from "./pages/Chat";
+import TenantPayments from "./pages/TenantPayments";
+import LandlordPayments from "./pages/LandlordPayments";
+import LandlordProperties from "./pages/LandlordProperties";
 
 export default function App() {
   return (
@@ -19,6 +24,55 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+
+            {/*  */}
+            <Route
+              path="/properties/admin"
+              element={
+                <PrivateRoute>
+                  <LandlordProperties />
+                </PrivateRoute>
+              }
+            />
+
+            {/*  */}
+
+            <Route
+              path="/payments"
+              element={
+                <PrivateRoute>
+                  <TenantPayments />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/payments/admin"
+              element={
+                <PrivateRoute>
+                  <LandlordPayments />
+                </PrivateRoute>
+              }
+            />
+
+            {/* ... */}
+            <Route
+              path="/chat"
+              element={
+                <PrivateRoute>
+                  <Chat />
+                </PrivateRoute>
+              }
+            />
+
+            {/*  */}
+            <Route
+              path="/requests/admin"
+              element={
+                <PrivateRoute>
+                  <LandlordRequests />
+                </PrivateRoute>
+              }
+            />
 
             {/*  */}
             <Route
