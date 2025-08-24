@@ -1,9 +1,10 @@
 // backend/routes/tenant.js
 const router = require("express").Router();
 const { authenticate, requireRole } = require("../middleware/authMiddleware");
+const Property = require("../models/Property"); // Add this import
+const MaintenanceRequest = require("../models/MaintenanceRequest"); // Add this import
+const RentInvoice = require("../models/RentInvoice"); // Add this import
 
-// Minimal tenant dashboard endpoint to unblock UI.
-// Expand later with real data (requests, invoices, properties).
 router.get(
   "/dashboard",
   authenticate,
@@ -12,20 +13,47 @@ router.get(
     try {
       const userId = req.user?.id || null;
 
-      // TODO: pull real data from your models
-      // e.g., const recentRequests = await MaintenanceRequest.find({ tenantId: userId }).sort({ createdAt: -1 }).limit(10);
-      // e.g., const invoices = await RentInvoice.find({ tenantId: userId }).sort({ dueDate: 1 }).limit(6);
+      // Get properties where this tenant is assigned
+      const properties = await Property.find({ tenants: userId })
+        .populate("landlord", "name email")
+        .lean();
+
+      // Get recent maintenance requests
+      const recentRequests = await MaintenanceRequest.find({ tenant: userId })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate("property", "title address")
+        .lean();
+
+      // Get recent invoices
+      const recentInvoices = await RentInvoice.find({ tenant: userId })
+        .sort({ dueDate: -1 })
+        .limit(5)
+        .populate("property", "title address")
+        .lean();
+
+      // Calculate stats
+      const pendingRequests = recentRequests.filter(
+        (r) => r.status === "pending"
+      ).length;
+      const inProgressRequests = recentRequests.filter(
+        (r) => r.status === "in_progress"
+      ).length;
+      const overdueInvoices = recentInvoices.filter(
+        (i) => i.status === "overdue"
+      ).length;
 
       res.json({
         ok: true,
         userId,
         stats: {
-          pendingRequests: 0,
-          inProgressRequests: 0,
-          overdueInvoices: 0,
+          pendingRequests,
+          inProgressRequests,
+          overdueInvoices,
         },
-        recentRequests: [],
-        recentInvoices: [],
+        properties,
+        recentRequests,
+        recentInvoices,
         notices: [],
       });
     } catch (e) {
