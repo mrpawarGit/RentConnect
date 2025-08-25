@@ -42,13 +42,19 @@ app.use("/api/chat", require("./routes/chat"));
 //   app.get("/(.*)", (_, res) => res.sendFile(path.join(client, "index.html")));
 // }
 
+// if (process.env.NODE_ENV === "production") {
+//   const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
+//   app.use(express.static(client));
+//   // ⬇️ valid in path-to-regexp v6
+//   app.get("/:rest(*)", (_, res) =>
+//     res.sendFile(path.join(client, "index.html"))
+//   );
+// }
+
 if (process.env.NODE_ENV === "production") {
   const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
   app.use(express.static(client));
-  // ⬇️ valid in path-to-regexp v6
-  app.get("/:rest(*)", (_, res) =>
-    res.sendFile(path.join(client, "index.html"))
-  );
+  app.get("/:rest*", (_, res) => res.sendFile(path.join(client, "index.html")));
 }
 
 /* -------------------- SOCKET.IO -------------------- */
