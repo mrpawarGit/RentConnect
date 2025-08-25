@@ -51,7 +51,7 @@ RentConnect streamlines maintenance requests, real‑time chat, and rent payment
 
 ### 2) Clone & install
 ```bash
-git clone <your-fork-or-repo-url>.git
+git clone https://github.com/mrpawarGit/RentConnect.git
 cd RentConnect
 
 # Backend
