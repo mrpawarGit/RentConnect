@@ -35,11 +35,20 @@ app.use("/api/tenant", require("./routes/tenant"));
 app.use("/api/landlord", require("./routes/landlord"));
 app.use("/api/chat", require("./routes/chat"));
 
+// if (process.env.NODE_ENV === "production") {
+//   const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
+//   app.use(express.static(client));
+//   // app.get("*", (_, res) => res.sendFile(path.join(client, "index.html")));
+//   app.get("/(.*)", (_, res) => res.sendFile(path.join(client, "index.html")));
+// }
+
 if (process.env.NODE_ENV === "production") {
   const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
   app.use(express.static(client));
-  // app.get("*", (_, res) => res.sendFile(path.join(client, "index.html")));
-  app.get("/(.*)", (_, res) => res.sendFile(path.join(client, "index.html")));
+  // ⬇️ valid in path-to-regexp v6
+  app.get("/:rest(*)", (_, res) =>
+    res.sendFile(path.join(client, "index.html"))
+  );
 }
 
 /* -------------------- SOCKET.IO -------------------- */
