@@ -18,22 +18,32 @@ const app = express();
 app.set("trust proxy", 1);
 
 /* ---------- CORS (supports multiple origins) ---------- */
-const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
+let allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
+// Add your Vercel frontend URL
+allowedOrigins.push("https://rent-connect-chi.vercel.app");
+
 // Add localhost for development if no origins specified
-if (process.env.NODE_ENV !== "production" && allowedOrigins.length === 0) {
+if (process.env.NODE_ENV !== "production" && allowedOrigins.length === 1) {
   allowedOrigins.push("http://localhost:4000", "http://localhost:3000");
 }
+
+console.log("✅ Allowed CORS origins:", allowedOrigins); // Debug log
 
 app.use(
   cors({
     origin: allowedOrigins.length ? allowedOrigins : false,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// Handle preflight requests
+app.options("*", cors());
 
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -52,6 +62,7 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || "development",
+    allowedOrigins: allowedOrigins, // Show allowed origins in health check
   });
 });
 
