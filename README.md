@@ -6,7 +6,7 @@ RentConnect streamlines maintenance requests, real‑time chat, and rent payment
 
 ### ⚙️ Tech Stack
 
-- **Frontend:** React {"(Vite)"} + React Router, Tailwind CSS (via `@tailwindcss/vite`), Axios, Socket.IO client
+- **Frontend:** React "(Vite)" + React Router, Tailwind CSS (via `@tailwindcss/vite`), Axios, Socket.IO client
 - **Backend:** Node.js + Express 5, MongoDB (Mongoose), JWT auth, Multer (uploads), Socket.IO  
 - **Dev ports:** Frontend `:4000` (Vite), Backend `:5000` (Express). Vite proxies `/api`, `/uploads`, and WebSocket `/socket.io` to the backend.
 
