@@ -5,21 +5,21 @@
 # API proxy to Render
 [[redirects]]
   from = "/api/*"
-  to = "https://rentconnect-3mfr.onrender.com/api/:splat"
+  to = "https://rentconnect-4f20.onrender.com/api/:splat"
   status = 200
   force = true
 
 # Uploaded files
 [[redirects]]
   from = "/uploads/*"
-  to = "https://rentconnect-3mfr.onrender.com/uploads/:splat"
+  to = "https://rentconnect-4f20.onrender.com/uploads/:splat"
   status = 200
   force = true
 
 # Socket.IO (WebSockets)
 [[redirects]]
   from = "/socket.io/*"
-  to = "https://rentconnect-3mfr.onrender.com/socket.io/:splat"
+  to = "https://rentconnect-4f20.onrender.com/socket.io/:splat"
   status = 200
   force = true
 

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { setToken } from "../lib/auth";
+import { API_BASE_URL } from "../lib/config";
 
 export default function Register() {
   const [errorMsg, setErrorMsg] = useState("");
@@ -20,10 +21,7 @@ export default function Register() {
     };
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/register",
-        data
-      );
+      const res = await axios.post(`${API_BASE_URL}/auth/register`, data);
       setToken(res.data.token);
       navigate("/dashboard");
     } catch (err) {
