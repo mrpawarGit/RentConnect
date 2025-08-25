@@ -1,31 +1,30 @@
-# Build settings
 [build]
   command = "npm run build"
   publish = "dist"
 
-# Single Page App fallback
+# API proxy to Render
+[[redirects]]
+  from = "/api/*"
+  to = "https://rentconnect-3mfr.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# Uploaded files
+[[redirects]]
+  from = "/uploads/*"
+  to = "https://rentconnect-3mfr.onrender.com/uploads/:splat"
+  status = 200
+  force = true
+
+# Socket.IO (WebSockets)
+[[redirects]]
+  from = "/socket.io/*"
+  to = "https://rentconnect-3mfr.onrender.com/socket.io/:splat"
+  status = 200
+  force = true
+
+# SPA fallback (keep LAST)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-# API proxy to Render
-[[redirects]]
-  from = "/api/*"
-  to = "https://YOUR-RENDER-SERVICE.onrender.com/api/:splat"
-  status = 200
-  force = true
-
-# Uploaded files proxy
-[[redirects]]
-  from = "/uploads/*"
-  to = "https://YOUR-RENDER-SERVICE.onrender.com/uploads/:splat"
-  status = 200
-  force = true
-
-# Socket.IO (WebSocket) proxy
-[[redirects]]
-  from = "/socket.io/*"
-  to = "https://YOUR-RENDER-SERVICE.onrender.com/socket.io/:splat"
-  status = 200
-  force = true
