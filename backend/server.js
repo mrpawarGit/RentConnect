@@ -23,9 +23,14 @@ const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
   .map((s) => s.trim())
   .filter(Boolean);
 
+// Add localhost for development if no origins specified
+if (process.env.NODE_ENV !== "production" && allowedOrigins.length === 0) {
+  allowedOrigins.push("http://localhost:4000", "http://localhost:3000");
+}
+
 app.use(
   cors({
-    origin: allowedOrigins.length ? allowedOrigins : true,
+    origin: allowedOrigins.length ? allowedOrigins : false,
     credentials: true,
   })
 );
@@ -40,6 +45,16 @@ app.use("/uploads", express.static(UPLOAD_DIR));
 
 connectDB();
 
+/* ---------- Health Check Endpoint ---------- */
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || "development",
+  });
+});
+
 /* ---------- API ROUTES ---------- */
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/maintenance", require("./routes/maintenance"));
@@ -49,10 +64,6 @@ app.use("/api/tenant", require("./routes/tenant"));
 app.use("/api/landlord", require("./routes/landlord"));
 app.use("/api/chat", require("./routes/chat"));
 
-/* ---------- SPA fallback (only if you actually serve frontend from backend) ----------
-   Since you’ll host the frontend on Netlify, this block should be OFF on Render.
-   If you want to keep it for local production tests, guard it with SERVE_CLIENT=true.
-*/
 if (process.env.SERVE_CLIENT === "true") {
   const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
   app.use(express.static(client));
@@ -64,8 +75,9 @@ if (process.env.SERVE_CLIENT === "true") {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins.length ? allowedOrigins : true,
+    origin: allowedOrigins.length ? allowedOrigins : false,
     credentials: true,
+    methods: ["GET", "POST"],
   },
   path: "/socket.io",
 });
@@ -230,7 +242,50 @@ io.on("connection", (socket) => {
   });
 });
 
+/* ---------- Error Handling Middleware ---------- */
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
+  res.status(500).json({
+    error:
+      process.env.NODE_ENV === "production"
+        ? "Internal Server Error"
+        : err.message,
+  });
+});
+
+// Handle 404s
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not Found",
+    message: `Route ${req.originalUrl} not found`,
+  });
+});
+
+/* ---------- Server Listen (CRITICAL FOR RENDER) ---------- */
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(
+    `✅ Allowed origins: ${
+      allowedOrigins.length ? allowedOrigins.join(", ") : "none configured"
+    }`
+  );
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received. Shutting down gracefully...");
+  server.close(() => {
+    console.log("Process terminated");
+    process.exit(0);
+  });
+});
+
+process.on("SIGINT", () => {
+  console.log("SIGINT received. Shutting down gracefully...");
+  server.close(() => {
+    console.log("Process terminated");
+    process.exit(0);
+  });
 });
