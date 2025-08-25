@@ -79,7 +79,9 @@ if (process.env.SERVE_CLIENT === "true") {
   const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
   app.use(express.static(client));
   // Reliable in Express: catch-all
-  app.get("*", (_, res) => res.sendFile(path.join(client, "index.html")));
+  app.get("/*splat", (req, res) => {
+    res.sendFile(path.join(client, "index.html"));
+  });
 }
 
 /* -------------------- SOCKET.IO -------------------- */
