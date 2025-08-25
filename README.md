@@ -189,19 +189,6 @@ Client socket setup lives in `frontend-rentConnect/src/lib/socket.js`.
 
 ---
 
-## 🖼️ Screenshots (placeholders)
-
-Add screenshots/gifs here to showcase key flows:
-
-- `./docs/screens/01-landing.png`
-- `./docs/screens/02-tenant-dashboard.png`
-- `./docs/screens/03-submit-request.png`
-- `./docs/screens/04-chat.png`
-- `./docs/screens/05-landlord-dashboard.png`
-- `./docs/screens/06-payments.png`
-
----
-
 ## 🧪 Scripts
 
 **Frontend**
