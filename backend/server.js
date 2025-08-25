@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const fs = require("fs");
 const path = require("path");
 const http = require("http");
 const express = require("express");
@@ -12,21 +13,34 @@ const Thread = require("./models/Thread");
 const Message = require("./models/Message");
 
 const app = express();
+
+// If you ever set secure cookies in the future
+app.set("trust proxy", 1);
+
+/* ---------- CORS (supports multiple origins) ---------- */
+const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || true,
+    origin: allowedOrigins.length ? allowedOrigins : true,
     credentials: true,
   })
 );
+
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// serve uploaded files
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+/* ---------- Uploads (configurable & ensured) ---------- */
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, "uploads");
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+app.use("/uploads", express.static(UPLOAD_DIR));
 
 connectDB();
 
-/* ---------- ROUTES ---------- */
+/* ---------- API ROUTES ---------- */
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/maintenance", require("./routes/maintenance"));
 app.use("/api/properties", require("./routes/property"));
@@ -35,33 +49,22 @@ app.use("/api/tenant", require("./routes/tenant"));
 app.use("/api/landlord", require("./routes/landlord"));
 app.use("/api/chat", require("./routes/chat"));
 
-// if (process.env.NODE_ENV === "production") {
-//   const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
-//   app.use(express.static(client));
-//   // app.get("*", (_, res) => res.sendFile(path.join(client, "index.html")));
-//   app.get("/(.*)", (_, res) => res.sendFile(path.join(client, "index.html")));
-// }
-
-// if (process.env.NODE_ENV === "production") {
-//   const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
-//   app.use(express.static(client));
-//   // ⬇️ valid in path-to-regexp v6
-//   app.get("/:rest(*)", (_, res) =>
-//     res.sendFile(path.join(client, "index.html"))
-//   );
-// }
-
-if (process.env.NODE_ENV === "production") {
+/* ---------- SPA fallback (only if you actually serve frontend from backend) ----------
+   Since you’ll host the frontend on Netlify, this block should be OFF on Render.
+   If you want to keep it for local production tests, guard it with SERVE_CLIENT=true.
+*/
+if (process.env.SERVE_CLIENT === "true") {
   const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
   app.use(express.static(client));
-  app.get("/:rest*", (_, res) => res.sendFile(path.join(client, "index.html")));
+  // Reliable in Express: catch-all
+  app.get("*", (_, res) => res.sendFile(path.join(client, "index.html")));
 }
 
 /* -------------------- SOCKET.IO -------------------- */
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || true,
+    origin: allowedOrigins.length ? allowedOrigins : true,
     credentials: true,
   },
   path: "/socket.io",
@@ -90,7 +93,6 @@ const userSockets = new Map();
 io.on("connection", (socket) => {
   const uid = socket.user.id;
 
-  // Track user connections
   if (!userSockets.has(uid)) userSockets.set(uid, new Set());
   userSockets.get(uid).add(socket.id);
 
@@ -115,7 +117,6 @@ io.on("connection", (socket) => {
       const thread = await Thread.findById(threadId).lean();
       if (!thread) return;
 
-      // Verify user is part of this thread
       if (
         ![String(thread.tenant), String(thread.landlord)].includes(String(uid))
       ) {
@@ -143,7 +144,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // SEND MESSAGE: emit to thread room AND directly to recipient sockets
   socket.on("message:send", async (payload, ack) => {
     try {
       const { threadId, body = "", attachments = [] } = payload || {};
@@ -155,7 +155,6 @@ io.on("connection", (socket) => {
       const thread = await Thread.findById(threadId).lean();
       if (!thread) throw new Error("Thread not found");
 
-      // verify membership
       if (
         ![String(thread.tenant), String(thread.landlord)].includes(String(uid))
       ) {
@@ -182,10 +181,8 @@ io.on("connection", (socket) => {
         .populate("to", "name email")
         .lean();
 
-      // 1) emit to the thread room (for all who joined)
       io.to(`thread:${threadId}`).emit("message:new", full);
 
-      // 2) directly emit to recipient sockets (they may not be in the room yet)
       const recipientSockets = userSockets.get(String(to));
       if (recipientSockets && recipientSockets.size > 0) {
         const now = new Date();
@@ -200,7 +197,6 @@ io.on("connection", (socket) => {
           });
         }
 
-        // also inform room listeners about delivery
         io.to(`thread:${threadId}`).emit("message:delivered", {
           _id: msg._id,
           deliveredAt: now,

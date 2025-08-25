@@ -1,0 +1,31 @@
+# Build settings
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Single Page App fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# API proxy to Render
+[[redirects]]
+  from = "/api/*"
+  to = "https://YOUR-RENDER-SERVICE.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# Uploaded files proxy
+[[redirects]]
+  from = "/uploads/*"
+  to = "https://YOUR-RENDER-SERVICE.onrender.com/uploads/:splat"
+  status = 200
+  force = true
+
+# Socket.IO (WebSocket) proxy
+[[redirects]]
+  from = "/socket.io/*"
+  to = "https://YOUR-RENDER-SERVICE.onrender.com/socket.io/:splat"
+  status = 200
+  force = true
