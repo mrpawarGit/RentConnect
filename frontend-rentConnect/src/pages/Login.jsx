@@ -1,23 +1,22 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "axios";
+import api from "../lib/api"; // ✅ Use your configured api instance
 import { setToken } from "../lib/auth";
-import { API_BASE_URL } from "../lib/config";
 
 export default function Login() {
   const [errorMsg, setErrorMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Added loading state
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
     setErrorMsg("");
-    setIsLoading(true); // Start loading
+    setIsLoading(true);
 
     const form = e.target;
     const data = {
-      email: form.email.value.trim(), // Trim whitespace
+      email: form.email.value.trim(),
       password: form.password.value,
     };
 
@@ -29,7 +28,8 @@ export default function Login() {
     }
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/auth/login`, data);
+      // ✅ Use api instance instead of axios + API_BASE_URL
+      const res = await api.post("/auth/login", data);
 
       if (res.data && res.data.token) {
         setToken(res.data.token);
@@ -59,7 +59,7 @@ export default function Login() {
           // Clear form
           form.reset();
 
-          navigate("/dashboard", { replace: true }); // Use replace to prevent back button issues
+          navigate("/dashboard", { replace: true });
         } catch (jwtError) {
           console.error("JWT decoding error:", jwtError);
           setErrorMsg("Invalid token received. Please try again.");
@@ -72,7 +72,6 @@ export default function Login() {
 
       // Enhanced error handling
       if (err.response) {
-        // Server responded with error status
         const status = err.response.status;
         const message = err.response.data?.message || err.response.data?.error;
 
@@ -86,13 +85,12 @@ export default function Login() {
           setErrorMsg(message || "Login failed. Please try again.");
         }
       } else if (err.request) {
-        // Network error
         setErrorMsg("Network error. Please check your connection.");
       } else {
         setErrorMsg("Login failed. Please try again.");
       }
     } finally {
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
     }
   }
 

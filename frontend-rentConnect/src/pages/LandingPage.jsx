@@ -1,16 +1,17 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import api from "../lib/api";
+import { getCurrentUser } from "../lib/auth"; // Import your auth utility
 
 export default function LandingPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       try {
-        const res = await api.get("/auth/me");
-        setUser(res.data || null);
+        // Use your existing auth utility instead of API call
+        const currentUser = getCurrentUser();
+        setUser(currentUser);
       } catch (err) {
         setUser(null);
       } finally {
