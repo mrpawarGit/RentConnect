@@ -38,7 +38,8 @@ app.use("/api/chat", require("./routes/chat"));
 if (process.env.NODE_ENV === "production") {
   const client = path.join(__dirname, "..", "frontend-rentConnect", "dist");
   app.use(express.static(client));
-  app.get("*", (_, res) => res.sendFile(path.join(client, "index.html")));
+  // app.get("*", (_, res) => res.sendFile(path.join(client, "index.html")));
+  app.get("/(.*)", (_, res) => res.sendFile(path.join(client, "index.html")));
 }
 
 /* -------------------- SOCKET.IO -------------------- */
