@@ -13,6 +13,9 @@ import Chat from "./pages/Chat";
 import TenantPayments from "./pages/TenantPayments";
 import LandlordPayments from "./pages/LandlordPayments";
 import LandlordProperties from "./pages/LandlordProperties";
+import Features from "./components/footer_pages/Features";
+import About from "./components/footer_pages/About";
+import Contact from "./components/footer_pages/Contact";
 
 export default function App() {
   return (
@@ -34,6 +37,11 @@ export default function App() {
                 </PrivateRoute>
               }
             />
+            {/* footer pages */}
+
+            <Route path="/features" element={<Features />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
 
             {/*  */}
 
