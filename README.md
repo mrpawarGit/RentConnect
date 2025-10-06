@@ -22,7 +22,7 @@ RentConnect streamlines maintenance requests, real‑time chat, and rent payment
   - **Landlord:** filterable table by property, type, urgency, and status; bulk status updates.
   - **Request Timeline:** chronological history of actions (submitted, reviewed, assigned, completed).
 - **Instant Messaging**
-  - Real‑time tenant–landlord threads with message **sent / delivered / read** indicators and timestamps.
+  - Real‑time tenant–landlord threads with message **sent/delivered/read** indicators and timestamps.
   - In‑app toasts and pop‑up notifications for new messages and status changes.
 - **Maintenance History & Reports**
   - Per‑property history to surface recurring problems.
@@ -79,7 +79,7 @@ CLIENT_URL=http://localhost:4000
 
 Create **`frontend-rentConnect/.env`** (optional – defaults work thanks to Vite proxy):
 ```bash
-# Vite will proxy /api and /socket.io to :5000 (see vite.config.js)
+# Vite will proxy /api and /socket.io to:5000 (see vite.config.js)
 # You can override base URLs in src/lib/api.js and src/lib/socket.js if deploying under a subpath.
 ```
 
