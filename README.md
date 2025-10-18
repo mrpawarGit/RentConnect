@@ -10,6 +10,10 @@ RentConnect streamlines maintenance requests, real‑time chat, and rent payment
 
 [**Backend API ⚙️**](https://rentconnect-backend-mmka.onrender.com/)
 
+
+<img width="1901" height="921" alt="image" src="https://github.com/user-attachments/assets/7fbd52b4-8bb1-42a4-8abe-5f9223032bf9" />
+
+---
 ### ⚙️ Tech Stack
 
 - **Frontend:** React "(Vite)" + React Router, Tailwind CSS (via `@tailwindcss/vite`), Axios, Socket.IO client
@@ -17,7 +21,6 @@ RentConnect streamlines maintenance requests, real‑time chat, and rent payment
 - **Dev ports:** Frontend `:4000` (Vite), Backend `:5000` (Express). Vite proxies `/api`, `/uploads`, and WebSocket `/socket.io` to the backend.
 
 ---
-
 ## ✨ Key Features
 
 - **Intuitive Maintenance Requests**
