@@ -1,6 +1,6 @@
 # RentConnect
 
-*A modern, frontend‑focused tenant–landlord communication platform.*
+*A modern, tenant–landlord communication platform.*
 
 RentConnect streamlines maintenance requests, real‑time chat, and rent payment tracking so tenants and landlords can resolve issues quickly and transparently.
 
