@@ -18,8 +18,7 @@ const app = express();
 app.set("trust proxy", 1);
 
 /* ---------- CORS (supports multiple origins) ---------- */
-let allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
-  .split(",")
+let allowedOrigins = process.env.CLIENT_URL.split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
