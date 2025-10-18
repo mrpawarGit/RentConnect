@@ -5,7 +5,9 @@
 RentConnect streamlines maintenance requests, real‑time chat, and rent payment tracking so tenants and landlords can resolve issues quickly and transparently.
 
 ## Live 🔗
+
 [**Frontend Site 💻**](https://rent-connect-kappa.vercel.app/)
+
 [**Backend API ⚙️**](https://rentconnect-backend-mmka.onrender.com/)
 
 ### ⚙️ Tech Stack
